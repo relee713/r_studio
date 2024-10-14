@@ -1,0 +1,75 @@
+---
+title: "Group 1"
+author: "Rachael Lee, Malachi Ndur, Mollie Schuma, and Lucas Carmichael"
+date: "9/23/2024"
+format: html
+editor: visual
+---
+
+# Team Photo!
+
+![Figure 1: Team #1 is the very best team](team_one_photo.png)
+
+# Problem Description:
+
+Frontier Airlines is weighing purchasing a new airplane from an aircraft manufacturer. The manufacturer offers the airplane for 50 million. The airline estimates that, if the airplane is purchased, it could generate an additional revenue of 120 million over its operational lifetime. However, this is contingent on the condition that the airline industry remains stable and demand for flights remains high, which the airline estimates have a 70% probability of occurring.
+
+# Inputs:
+
+### Option One
+
+- New Model Airplane 
+- Cost: \$50M 
+- 70% Chance of Generating \$120M 
+- 30% Chance of Generating \$30M
+
+### Option Two
+
+- Older Model Airplane 
+- Cost: \$10M 
+- 100% Chance of Generating \$40M
+
+# Calculations
+
+``` r
+#variables 
+stable_p <- .7 
+notstable_p <- .3  
+new_stable <- 120 
+new_notstable <- 30 
+new_cost <- 50  
+
+#calculating outcome of choosing new plane if market is stable  
+newplane2 <- stable_p * new_stable  # = 84  
+
+#calculating outcome of chosing new plane if market is unstable  
+newplane1 <- notstable_p * new_notstable # = 9  
+
+oldplane_p <- 1 
+oldplane_cost <- 10 
+oldplane_gen <- 40 
+
+#calculating the old plane profit minus the cost of the plane  
+oldplane_gen - oldplane_cost 
+#Adding the outcomes of the two new plane decisions 
+new <- newplane1 + newplane2  
+#calculating the new plane profit minus cost of the plane  
+new - new_cost 
+```
+
+# Decision Tree:
+
+```{mermaid}
+graph LR
+  Frontier[Frontier] --> |$50M Cost| New[New Model]
+  Frontier[Frontier] --> |$10M Cost| Old[Old Model]
+  New[New Model] --> |30%| Stable[Stable Market]
+  New[New Model] --> |70%| Unstable[Unstable Market]
+  Stable[Stable Market] --> PS(($120M)) --> PS1(($84M))
+  Unstable[Unstable Market] --> PU(($30M)) -->PU1(($9M))
+  Old[Old Model] --> |100%| Market[No Market Reliance] -->PO(($40M)) --> PO1(($30M))
+```
+
+# Recommendation:
+
+Team 1 recommends purchasing the newer model because the expected value of the new plane is higher than purchasing an older plane. Team 1’s recommendation is riskier as there is a lower chance of ensured revenue 70%, compared to 100% with purchasing the older plane. Depending on the preferences of Frontier Airlines and how much risk they want to take, this will impact their decision. However, Team 1 effectively displays the team’s preferred option and the alternative in case Frontier Airlines wants to go in a different direction.

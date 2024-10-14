@@ -1,0 +1,140 @@
+---
+title: "Assignment 3"
+format: html
+editor: visual
+author: "Lee, Schuma, Ndur, and Carmichael"
+---
+```{r, echo=FALSE}
+library(triangle)
+library(ggplot2)
+library(dplyr)
+```
+# Summary:
+## Problem
+Following the rejection of the original proposal from the company, the client has counteroffered and presented AstraSync with three options. Team 1 recommends that AstraSync choose option A to maximize the most profit in conjunction with the highest certainty of making a profit. Team 1 believes that the alternative options are too risky and could be detrimental to the status of the company if it does not secure another stable client. To be more certain, the team has assembled a decision tree and histogram to display the advantages of option A and disadvantages of choosing the alternative options. Overall, this analysis by team 1 will help the company identify the best direction to move forward. 
+
+## Approach 
+To solve the problem, team 1 is going to utilize R to evaluate the counteroffer. The client is offering equal payments of $152,000 every month for 18 months or monthly payments of $125,000 for 18 months with the potential for a $800,000 bonus at the end, which AstraSync is 70% confident of achieving. If AstraSync dislikes either option it could open it to other companies and compete for the proposal with a much higher earning potential, but with drastically lower chances of obtaining the client at 40%. First, a decision tree is constructed to display the potential payoffs for each option. With the code shown below, team 1 finds that the margins between each option are minimal within a couple thousand.  
+
+## Recommendation
+Our early recommendation is to minimize external risk while simultaneously maximizing profits. Option B creates an opportunity for AstraSync to make the most money based exclusively on their abilities to perform for the client as opposed to the bidding system of Option C. Ultimately we believe the guaranteed $125,000 and more than likely chance of our high performance resulting in a $800,000 bonus. 
+
+# Analysis:
+## Our Approach 
+Each option provides a monthly payment, and Options B & C add a bonus provided at the end. The total profit of the company comes from these monthly payments minus the monthly maintenance cost of 1200 hours at $100/hour. 
+
+However, the discounting rate of 1.5% per month must be applied over the 18 month project, which results in the following equation: 
+
+$$ \sum_{i=1}^{18} \frac{(\text{Option} - \text{Cost})}{(1 + 0.015)^t} $$
+
+Similarly, the end-of-project bonuses must also be multiplied by the rate at the end of the 18 months: 
+
+$$ \frac{\text{Bonus}}{(1+0.015)^{18}} $$
+
+Using these functions, we can find each of the possible outcomes. 
+### Option A
+```{r}
+#Option A provides $152,000 monthly with no end bonus.
+operation_cost <- 120000
+option_a <- 152000
+a_profit <- round(sum((option_a - operation_cost)/(1 + 0.015)^(1:18)), 2)
+cat("Option A Profit = $", a_profit)
+
+``` 
+### Option B
+Option B is slightly more complicated. The option gives $125,000 per month with the possibility of a $800,000 bonus at end-of-project. This gives us two possibilities, depending on if we receive the bonus.
+
+Multiplying each of the profits by their likelihood of occurrence (70% Chance of Success) gives us the Expected Value of the option.
+```{r}
+#Total Profits 
+option_b <- 125000
+b1_profit <- round(sum((option_b - operation_cost)/(1 + 0.015)^(1:18)), 2) + (800000/1.015^18)
+b2_profit <- round(sum((option_b - operation_cost)/(1 + 0.015)^(1:18)), 2)
+#Expected Value 
+b_profit <- b1_profit*0.7 + b2_profit*0.3
+```
+```{r, echo = FALSE}
+t = 1.015^18
+cat("Option B Profit = $", b2_profit)
+cat("Option B Profit + Bonus = $", b1_profit)
+cat("Option B Expected Value = $", b_profit)
+```
+### Option C
+Option C is the most complicated, with only a 40% chance of winning the $150,000 bid to begin with.
+```{r}
+#First we calculate the profit with the $150,000 monthly payments
+option_c <- 150000
+c1_profit <- sum((option_c - operation_cost)/(1 + 0.015)^(1:18))
+```
+```{r, echo=FALSE}
+cat("Option C Monthly Profit = $ ", c1_profit)
+```
+Option C also provides the opportunity for a bonus based on a share of the total savings we provide the company with the triangular distribution of our potential total savings being a low of $3.2M, high of $12.8M, and most likely $5.6M. 
+
+| Savings  | Bonus (Share of Savings)  |
+|:----|:---:|
+| < $4 Million   |  No Bonus  |
+| $4-6 Million   | 20% of excess above 4 million |
+| $6-8 Million | 400,000 plus 40% of excess above 6 million|
+| +$8 Million |1.2 million plus 60% of excess above 8 million|
+
+By simulating a triangular distribution 100,000 times, we are able to find the most likely outcome of the distribution and calculate that with our Expected Value. 
+```{r}
+low <- 3200000
+likely <- 5600000
+high <- 12800000
+simulations <- 100000
+
+#This creates 100,000 possible outcomes when we normalize the triangular distribution
+c_sim <- rtriangle(simulations, low, high, likely)
+#From this we can create a histogram of the distributions
+c_df <- data.frame(c_sim)
+
+ggplot(c_df, aes(x = c_sim)) + 
+  geom_histogram(binwidth = 5000, color = "lightblue") +
+  labs(title = "Simulated Savings for Option ", subtitle = "100,000 Simulation Histogram",
+       x = "Savings in USD",
+       y = "Frequency") + 
+  geom_vline(aes(xintercept = mean(c_sim)), c_df, color = "red") +
+  annotate("text", x = 11000000, y = 90, label="Mean:", color = "red") +
+  annotate("text", x = 12000000, y = 90, label=round(mean(c_sim)), color = "red") +
+  geom_vline(aes(xintercept = median(c_sim)), c_df, color = "darkblue") +
+  annotate("text", x = 11000000, y = 80, label="Median:", color = "darkblue") +
+  annotate("text", x = 12000000, y = 80, label=round(median(c_sim)), color = "darkblue") +
+theme_minimal()
+```
+Taking the mean savings, we can create a case_when() function that will categorize the savings and calculate the consequent bonus. Adding this to the monthly profit from the $150,000 gives us the total profits for each of the 100,000 simulations. 
+```{r}
+c_profit <- c_df %>%
+  mutate(profit_category = case_when(
+    c_sim < 4000000 ~ round(c1_profit),
+    c_sim >= 4000000 & c_sim < 6000000 ~ (0.2*(c_sim-4000000)/t) + c1_profit,
+    c_sim >= 6000000 & c_sim < 8000000 ~ (400000 + 0.4*(c_sim-6000000))/t + c1_profit,
+    c_sim >= 8000000 ~ (1200000 + 0.6*(c_sim-8000000))/t + c1_profit
+  ))
+```
+Taking the mean from this new database gives us a good impression on the potential outcomes for our savings produced.
+```{r, echo = FALSE}
+c_mean <- mean(c_profit$profit_category)
+cat("Mean Savings = $", mean(c_profit$c_sim), "Mean Profit = $", c_mean)
+```
+However, these large profits entirely depend on the possibility of winning the bid, which was only estimated to be 40%. The Estimated Value then has to be computed with the opposing option of $0 from a non-winning bid.
+```{r, echo = FALSE}
+c_profit_final <- 0.4*c_mean
+cat("Option C Winning Bid: $", c_mean)
+cat("Option C Losing Bid: $", 0)
+cat("Option C Estimated Value: $", c_profit_final)
+```
+# Illustration:
+```{mermaid}
+graph LR
+a[Option_A] --> a_profit["$501,521.95"]
+
+b[Option_B] --> |70% Success| b1_profit["$690,292.06"] --> b_profit["$506,713.30"]
+b[Option_B] --> |30% Failure| b2_profit["$78,362.8"] --> b_profit["$506,713.30"]
+
+c[Option_C] --> |40% Success| c_success["$1,519,144"] --> c_profit["$ 510077.9"]
+c[Option_C] --> |60% Failure| c_failure["$0"] --> c_profit["$ 510077.9"]
+```
+# Conclusion:
+Tying in with our evidence, team 1 recommends option A to minimize the risk of losing a potential client. Although the profit is slightly lower than other options, the margins are not high enough to take a risk such as the ones option B and C present our company with. Risks associated with choosing option A include operating with lower profit due to choosing the safer alternative. Additionally, settling for a new amount, could impact future negotiations with the client who will be reluctant to raise prices following this renegotiation in their favor. Yet, team 1 firmly maintains support for option A as it is the safest option and does not impact revenue substantially for AstraSync. Further, team 1 views this as a stable option that will help grow the company for the next 18 months while working with the client. 
