@@ -1,0 +1,156 @@
+---
+title: "Airline On-Time Performance (Jan 2024)"
+author: "Rachael Lee, Malachi Ndur, Lucas Carmichael, and Mollie Schuma"
+date: "09/25/2024"
+format: html
+editor: visual
+---
+
+# Initial Code
+
+```{r}
+library(gridExtra)
+library(tidyverse)
+library(ggplot2)
+library(gt)
+library(ggthemes)
+library(readr)
+
+all_airlines <- read_csv("C:/Users/relee/OneDrive/Desktop/MSBAData/delta_ontime.csv")
+delta  <- all_airlines %>%
+  filter(OP_UNIQUE_CARRIER == "DL")
+
+delta_avg_delay <- delta %>%
+  group_by(CRS_DEP_TIME) %>%
+  summarize(avg_arr_delay = mean(ARR_DELAY, na.rm = TRUE))
+
+united <- all_airlines %>% filter(OP_UNIQUE_CARRIER == "UA")
+
+united_avg_delay <- united %>%
+  group_by(CRS_DEP_TIME) %>%
+  summarize(united_delay = mean(ARR_DELAY, na.rm = TRUE))
+
+american <- all_airlines %>% filter(OP_UNIQUE_CARRIER == "AA")
+
+american_avg_delay <- delta %>%
+  group_by(CRS_DEP_TIME) %>%
+  summarize(american_delay = mean(ARR_DELAY, na.rm = TRUE))
+```
+
+# Key Findings
+
+Team 1 was tasked with analyzing airline performance data in June for Delta Airlines. To accomplish this, we accessed the U.S Department of Transportation’s Buruea of Transportation Statistics website, downloaded airline performance data, and used R’s tidyverse package to display our findings. Using this data, we will provide business insights for Delta.
+
+We primarily looked at data surrounding scheduled departure times (CRS_DEP_TIME) and flight delays and found a correlation between the time of day and the likelihood of a longer flight delay.
+
+This could be caused by an increased number of planes on the tarmac, a higher workload for plane cleaners/maintenance workers, more customers in the airport, etc.
+
+We found planes scheduled to depart from 3:00 PM - 11:00 PM had the highest average minutes of delay for all airlines. However, we also noticed how Delta airlines has a considerably more consistent delay-rate over time:
+
+```{r}
+print("Average Delta-Flight Minutes of Delay: ")
+print(mean(delta$ARR_DELAY))
+
+print("Overall Average Minutes of Delay: ")
+print(mean(all_airlines$ARR_DELAY, na.rm = TRUE))
+```
+
+The average Delta flight is delayed by five less minutes than their competitors.
+
+# Summary Table
+
+## Variables
+
+-   OP_UNIQUE_CARRIER: Unique Airline ID (Delta is DL!)
+-   Cancelled_Flights: Total number of flights cancelled
+-   Avg_Arrival_Difference: Average difference in time between scheduled arrival and actual arrival (including early or on-time flights)
+-   Avg_Amount_Delay: Average minutes of delay for flights that were delayed
+
+```{r}
+summary_table <- all_airlines %>%
+  group_by(OP_UNIQUE_CARRIER) %>%
+  summarise(
+    Cancelled_Flights = sum(CANCELLED == 1, na.rm = TRUE), 
+    Avg_Arrival_Difference = mean(ARR_DELAY, na.rm = TRUE), 
+    Avg_Amount_Delayed = mean(ARR_DELAY[ARR_DELAY > 0], na.rm = TRUE)) %>%
+  arrange(desc(Avg_Amount_Delayed))
+
+summary_table %>% gt()
+```
+
+Delta Airlines has a low, but not substantially small, average arrival difference and average amount delayed. For a large corporation travelling interstate and international, this makes sense. Regional airlines like Hawaiian Airlines (HA) or Alaskian Airlines (AS) have extremely low delay times, as they take off and land back and forth from the same few, nearby locations all day.
+
+Important visuals here is Delta's performance to their other international competitors like United (UA) and American Airlines (AA) -- who they drastically outperform!
+
+# Visualizations
+
+```{r}
+delta_plot <- ggplot(delta_avg_delay, aes(x = CRS_DEP_TIME, y = avg_arr_delay)) +
+  geom_point(color = "blue") + geom_smooth(color = "black")+ labs(title = "Delta Airline's Average Minutes of Delay June 2024", 
+       x = "Scheduled Departure Time", 
+       y = "Average Arrival Delay (minutes)")
+delta_plot
+```
+
+```{r}
+all_delay <- all_airlines %>%
+  group_by(CRS_DEP_TIME) %>%
+  summarize(all_arr_delay = mean(ARR_DELAY, na.rm = TRUE))
+
+all_airlines_plot <- ggplot(all_delay, aes(x = CRS_DEP_TIME, y = all_arr_delay)) +
+  geom_point(color = "orange") + geom_smooth(color = "black")+ labs(title = " All Airlines' Average Minutes of Delay June 2024", 
+       x = "Scheduled Departure Time", 
+       y = "Average Arrival Delay (minutes)")
+all_airlines_plot
+```
+
+```{r}
+united_plot <- ggplot(united_avg_delay, aes(x = CRS_DEP_TIME, y = united_delay)) +
+  geom_point(color = "lightblue") + geom_smooth(color = "black")+ labs(title = "United Airlines's Average Minutes of Delay June 2024", 
+       x = "Scheduled Departure Time", 
+       y = "Average Arrival Delay (minutes)")
+
+american_plot <- ggplot(american_avg_delay, aes(x = CRS_DEP_TIME, y = american_delay)) +
+  geom_point(color = "lightblue") + geom_smooth(color = "black")+ labs(title = "American Airlines's Average Minutes of Delay June 2024", 
+       x = "Scheduled Departure Time", 
+       y = "Average Arrival Delay (minutes)")
+
+grid.arrange(all_airlines_plot, delta_plot, united_plot, american_plot, ncol = 2)
+```
+
+Even though Delta flights are more unpredictable that the average flight, they arrive early to their destination at a similar rate as they arrive late, making their overall arrival delay only 6 minutes!
+
+However, even if we were to look at the delays alone (excluding flights with no delay or that arrived early) Delta Airlines still pulls ahead over their competitors.
+
+```{r}
+delays <- all_airlines %>% filter(ARR_DELAY > 0) 
+delta_delays <- delta %>% filter(ARR_DELAY > 0)
+
+print("Average Time Delayed for All Delayed Flights")
+print(mean(delays$ARR_DELAY))
+print("Average Time Delayed for Delayed Delta Flights")
+print(mean(delta_delays$ARR_DELAY))
+```
+
+# Business Insights
+
+### Evening Flights are Consistently Delayed
+
+Between 3:00 pm to Midnight, all flights are consistently delayed by 30 minutes to an hour.
+
+### Morning and Mid-Day Flights are Consistently Average
+
+Delays with the most average delay time occur from 5:00 AM to 3 pm. These flights are consistently delayed for 0-30 minutes.
+
+### Early Morning Flights are Inconsistently Very Early and Very Late
+
+The hours of 12:00 AM to 5:00 AM are extremely unpredictable and range dramatically.
+
+# Function Report
+
+We used multiple functions and packages to perform this analysis, as listed below:
+
+-   ggplot: used to create our graphs and show initial insights
+-   dplyr: used to pipe and clean functions, separate variables, and calculate data
+-   tidyverse: used to pipe, clean, and graph variables
+-   gt: used to format and create the summary table
